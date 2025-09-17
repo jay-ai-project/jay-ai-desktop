@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 import CodeBlock from './CodeBlock';
-import Collapsible from './Collapsible';
-import MetadataView from './MetadataView';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -56,7 +53,6 @@ function App() {
     const aiMessage: Message = { id: crypto.randomUUID(), type: 'ai', content: '' };
     setMessages(prev => [...prev, aiMessage]);
 
-    // Abort any existing connection
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -64,87 +60,74 @@ function App() {
     const ctrl = new AbortController();
     abortControllerRef.current = ctrl;
 
-    fetchEventSource('http://localhost:8123/api/chat/stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        graph_name: 'Ollama_Agent',
-        input: {
-          'chat_history': [],
-          'messages': [{'type': humanMessage.type, 'content': humanMessage.content}]
+    try {
+      const response = await fetch('http://localhost:8000/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        config: {
-          'configurable': {
-            'thread_id': crypto.randomUUID(),
-            'additional_options': {
-              'ollama': {
-                'model': 'gpt-oss:20b',
-                'reasoning': true
-              }
-            }
-          }
+        body: JSON.stringify({
+          prompt: humanMessage.content
+        }),
+        signal: ctrl.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Failed to get readable stream.');
+      }
+
+      const decoder = new TextDecoder();
+      let incompleteLine = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
         }
-      }),
-      signal: ctrl.signal,
-      onopen: async (response) => {
-        if (response.ok) {
-          console.log('Connection to server opened.');
-          return;
-        }
-        throw new Error(`Failed to connect. Status: ${response.status}`);
-      },
-      onmessage: (event) => {
-        if (event.event === 'end') {
-          console.log('Stream ended.');
-          setIsLoading(false);
-          if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
+
+        const chunkText = decoder.decode(value, { stream: true });
+        const lines = (incompleteLine + chunkText).split('\n');
+        incompleteLine = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          
+          const parsedChunk = JSON.parse(line);
+          const { type, data } = parsedChunk;
+
+          if (type === 'message') {
+            setMessages(prev => prev.map(msg => 
+              msg.id === aiMessage.id ? { ...msg, content: msg.content + data } : msg
+            ));
+          } else if (type === 'end') {
+            console.log('Stream ended.');
+            setIsLoading(false);
             abortControllerRef.current = null;
+            return; // 스트림 처리 종료
+          } else if (type === 'error') {
+            throw new Error(data);
           }
-          return;
         }
+      }
 
-        if (event.event === 'message') {
-          console.log('Stream message.', event);
-          const data = JSON.parse(event.data)
-          setMessages(prev => prev.map(msg => 
-            msg.id === aiMessage.id ? { ...msg, content: msg.content + data.chunk.content } : msg
-          ));
-        }
-
-        // if (event.event === 'metadata') {
-        //   const metadataChunk = JSON.parse(event.data);
-        //   setMessages(prev => prev.map(msg => {
-        //     if (msg.id !== aiMessage.id) return msg;
-        //     const updatedMetadata = { ...msg.metadata, ...metadataChunk };
-        //     if (metadataChunk.reasoning) {
-        //         updatedMetadata.reasoning = metadataChunk.reasoning;
-        //     }
-        //     return { ...msg, metadata: updatedMetadata };
-        //   }));
-        // }
-      },
-      onerror: (error) => {
-        console.error('EventSource failed:', error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Fetch aborted.');
+      } else {
+        console.error('Streaming failed:', error);
         setMessages(prev => prev.map(msg => 
           msg.id === aiMessage.id ? { ...msg, content: 'Error connecting to the backend.' } : msg
         ));
-        setIsLoading(false);
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-          abortControllerRef.current = null;
-        }
-        // Throwing the error will prevent retries
-        throw error;
       }
-    }).catch(error => {
-      // This will catch fatal errors, like the ones thrown from onopen or onerror.
-      if (error.name !== 'AbortError') {
-        console.error('Fetch Event Source fatal error:', error);
-      }
-    });
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
   };
 
   return (
@@ -152,11 +135,6 @@ function App() {
       <div className="chat-container" ref={chatContainerRef}>
         {messages.map(msg => (
           <div key={msg.id} className={`chat-message ${msg.type}`}>
-            {msg.type === 'ai' && msg.metadata && Object.keys(msg.metadata).length > 0 && (
-              <Collapsible title="Details">
-                <MetadataView data={msg.metadata} />
-              </Collapsible>
-            )}
             <div className="message-content">
               {msg.type === 'ai' ? (
                 <ReactMarkdown 

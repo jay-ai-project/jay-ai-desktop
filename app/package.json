@@ -6,10 +6,11 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "cross-env NODE_ENV=development electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
+    "package": "npm run build:backend && electron-forge package",
+    "make": "npm run build:backend && electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "build:backend": "cd backend && uv sync && uv run python build.py && cd .."
   },
   "keywords": [],
   "author": {
@@ -42,7 +43,6 @@
     "vite": "^7.1.5"
   },
   "dependencies": {
-    "@microsoft/fetch-event-source": "^2.0.1",
     "@uidotdev/usehooks": "^2.4.1",
     "electron-squirrel-startup": "^1.0.1",
     "react": "^19.1.1",

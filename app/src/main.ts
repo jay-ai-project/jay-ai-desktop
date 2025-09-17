@@ -1,30 +1,36 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, exec, execSync, ChildProcess } from 'child_process';
+
 
 let pythonProcess: ChildProcess | null = null;
 
-// TODO: pip대신 uv 로 변경 가능?
-// TODO: electron-forge 에서 백앤드도 같이 패키지로 설치 가능?
+
 function startPythonBackend() {
-  // The path to the Python executable in the virtual environment
-  const projectRoot = path.join(__dirname, '..', '..');
-  const pythonExe = path.join(projectRoot, '.venv', 'Scripts', 'python.exe');
-  const backendPath = path.join(projectRoot, 'backend', 'server.py');
+  let command: string;
+  let args: string[];
+  let processCwd: string;
 
-  console.log(`Starting python backend at: ${backendPath}`);
-  console.log(`Using python executable: ${pythonExe}`);
+  if (app.isPackaged) {
+    // Production: Run the packaged executable
+    const resourcesPath = process.resourcesPath;
+    command = path.join(resourcesPath, 'backend_server.exe');
+    args = [];
+    processCwd = resourcesPath;
+  } else {
+    // Development: Use uv to run the server
+    command = 'uv';
+    args = ['run', 'uvicorn', 'src.server:app', '--host', '0.0.0.0', '--port', '8000'];
+    processCwd = path.join(app.getAppPath(), 'backend');
+  }
 
-  // Start uvicorn server
-  pythonProcess = spawn(pythonExe, [
-    '-m', 
-    'uvicorn', 
-    'backend.server:app', 
-    '--host', '127.0.0.1', 
-    '--port', '8000'
-  ], {
-    cwd: projectRoot // Set CWD to the 'app' directory
+  console.log(`[Python Backend] Starting process: ${command} ${args.join(' ')} in ${processCwd}`);
+
+  pythonProcess = spawn(command, args, {
+    cwd: processCwd,
+    shell: true
+    // detached: true is removed to tie the child process lifecycle to the parent
   });
 
   pythonProcess.stdout.on('data', (data) => {
@@ -73,14 +79,28 @@ const createWindow = () => {
 };
 
 app.on('ready', () => {
-  // startPythonBackend();
+  startPythonBackend();
   createWindow();
 });
 
-app.on('quit', () => {
-  console.log('Terminating Python backend process...');
-  if (pythonProcess) {
-    pythonProcess.kill();
+app.on('before-quit', () => {
+  if (pythonProcess && !pythonProcess.killed) {
+    console.log('Terminating Python backend process synchronously...');
+    
+    // On Windows, use execSync to block the quit process until the child is killed.
+    if (process.platform === 'win32') {
+      try {
+        console.log(`Using taskkill (sync) on PID: ${pythonProcess.pid}`);
+        // Execute taskkill synchronously.
+        execSync(`taskkill /PID ${pythonProcess.pid} /F /T`);
+        console.log('Backend process terminated.');
+      } catch (err) {
+        console.error(`Failed to kill backend process: ${err}`);
+      }
+    } else {
+      // Standard kill for macOS, Linux
+      pythonProcess.kill();
+    }
   }
 });
 

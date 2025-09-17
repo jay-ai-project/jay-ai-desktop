@@ -12,6 +12,9 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    extraResource: [
+      './backend/dist/backend_server.exe'
+    ]
   },
   rebuildConfig: {},
   makers: [

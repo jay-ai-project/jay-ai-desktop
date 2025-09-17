@@ -1,38 +1,38 @@
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useCopyToClipboard } from "@uidotdev/usehooks";
-
+import { Button, Box } from '@chakra-ui/react';
 
 const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
     const match = /language-(\w+)/.exec(className || '');
     const codeString = String(children).replace(/\n$/, '');
     const [copiedText, copyToClipboard] = useCopyToClipboard();
 
+    const handleCopy = () => {
+        copyToClipboard(codeString);
+    };
+
     return !inline && match ? (
-        <div style={{ position: 'relative' }}>
+        <Box position="relative" my="4" borderRadius="md" overflow="hidden">
             <SyntaxHighlighter
-                style={dracula} // Apply your chosen style
+                style={vscDarkPlus}
                 language={match[1]}
                 PreTag="div"
                 {...props}
             >
                 {codeString}
             </SyntaxHighlighter>
-            <button
-                onClick={() => copyToClipboard(codeString)}
-                style={{
-                    position: 'absolute',
-                    top: '0.5em',
-                    right: '0.5em',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: copiedText === codeString ? 'green' : 'white',
-                }}
+            <Button
+                size="sm"
+                position="absolute"
+                top="2"
+                right="2"
+                onClick={handleCopy}
+                colorScheme={copiedText === codeString ? 'green' : 'gray'}
             >
               {copiedText === codeString ? 'Copied!' : 'Copy'}
-            </button>
-        </div>
+            </Button>
+        </Box>
     ) : (
         <code className={className} {...props}>
             {children}

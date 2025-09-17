@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import './App.css';
 import CodeBlock from './CodeBlock';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-
+import { Box, Flex, VStack, Textarea, IconButton, Avatar } from '@chakra-ui/react';
+import { ArrowUpIcon } from '@chakra-ui/icons';
+import TextareaAutosize from 'react-textarea-autosize';
 
 // Define the structure for metadata
 interface Metadata {
@@ -34,20 +35,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [input]);
 
   const handleSend = async () => {
     if (input.trim() === '' || isLoading) return;
@@ -57,7 +50,7 @@ function App() {
 
     const humanMessage: Message = { id: crypto.randomUUID(), type: 'human', content: userPrompt };
     setMessages(prev => [...prev, humanMessage]);
-    
+
     const aiMessage: Message = { id: crypto.randomUUID(), type: 'ai', content: '' };
     setMessages(prev => [...prev, aiMessage]);
 
@@ -101,22 +94,22 @@ function App() {
         const chunkText = decoder.decode(value, { stream: true });
         const lines = (incompleteLine + chunkText).split('\n');
         incompleteLine = lines.pop() || '';
-        
+
         for (const line of lines) {
           if (line.trim() === '') continue;
-          
+
           const parsedChunk = JSON.parse(line);
           const { type, data } = parsedChunk;
 
           if (type === 'message') {
-            setMessages(prev => prev.map(msg => 
+            setMessages(prev => prev.map(msg =>
               msg.id === aiMessage.id ? { ...msg, content: msg.content + data } : msg
             ));
           } else if (type === 'end') {
             console.log('Stream ended.');
             setIsLoading(false);
             abortControllerRef.current = null;
-            return; // 스트림 처리 종료
+            return;
           } else if (type === 'error') {
             throw new Error(data);
           }
@@ -128,7 +121,7 @@ function App() {
         console.log('Fetch aborted.');
       } else {
         console.error('Streaming failed:', error);
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.id === aiMessage.id ? { ...msg, content: 'Error connecting to the backend.' } : msg
         ));
       }
@@ -146,52 +139,60 @@ function App() {
   };
 
   return (
-    <>
-      <div className="chat-container" ref={chatContainerRef}>
+    <Flex h="100vh" flexDirection="column" maxW="800px" mx="auto">
+      <VStack flex="1" overflowY="auto" spacing="4" p="4" ref={chatContainerRef}>
         {messages.map(msg => (
-          <div key={msg.id} className={`chat-message ${msg.type}`}>
-            <div className="message-content">
-              {msg.type === 'ai' ? (
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm]} 
-                  rehypePlugins={[rehypeRaw]}
-                  components={{
-                    code: CodeBlock,
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
-              ) : (
-                msg.content.split('\n').map((line, i) => (
-                  <React.Fragment key={i}>{line}{i !== msg.content.split('\n').length - 1 && <br />}</React.Fragment>
-                ))
-              )}
-            </div>
-          </div>
+          <Flex key={msg.id} w="full" justify={msg.type === 'human' ? 'flex-end' : 'flex-start'}>
+            {msg.type === 'ai' && <Avatar size="sm" mr="3" />}
+            <Box
+              bg={msg.type === 'human' ? 'blue.500' : 'gray.600'}
+              color="white"
+              p="3"
+              borderRadius="lg"
+              maxW="80%"
+            >
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+                components={{
+                  code: CodeBlock,
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
+            </Box>
+            {msg.type === 'human' && <Avatar size="sm" ml="3" />}
+          </Flex>
         ))}
-      </div>
-      <form
-        className="chat-input-form"
-        onSubmit={e => {
-          e.preventDefault();
-          handleSend();
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type your message..."
-        />
-        <button type="submit" disabled={isLoading}>
-          ↑
-        </button>
-      </form>
-    </>
+      </VStack>
+      <Box p="4">
+        <Flex as="form" onSubmit={e => { e.preventDefault(); handleSend(); }} align="flex-end">
+          <Textarea
+            as={TextareaAutosize}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+            variant="filled"
+            minRows={1}
+            maxRows={6}
+            mr="2"
+            flex="1"
+            resize="none"
+          />
+          <IconButton
+            aria-label="Send message"
+            icon={<ArrowUpIcon />}
+            type="submit"
+            isLoading={isLoading}
+            isDisabled={input.trim() === ''}
+            colorScheme="blue"
+            isRound
+          />
+        </Flex>
+      </Box>
+    </Flex>
   );
 }
-
 
 export default App;

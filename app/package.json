@@ -43,12 +43,18 @@
     "vite": "^7.1.5"
   },
   "dependencies": {
+    "@chakra-ui/icons": "^2.1.1",
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
     "@uidotdev/usehooks": "^2.4.1",
     "electron-squirrel-startup": "^1.0.1",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "framer-motion": "^10.18.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^15.6.6",
+    "react-textarea-autosize": "^8.5.9",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1"
   }

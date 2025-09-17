@@ -34,12 +34,20 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [input]);
 
   const handleSend = async () => {
     if (input.trim() === '' || isLoading) return;
@@ -130,6 +138,13 @@ function App() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
     <>
       <div className="chat-container" ref={chatContainerRef}>
@@ -162,18 +177,21 @@ function App() {
           handleSend();
         }}
       >
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
+          rows={1}
           value={input}
           onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
         <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Sending...' : 'Send'}
+          ↑
         </button>
       </form>
     </>
   );
 }
+
 
 export default App;

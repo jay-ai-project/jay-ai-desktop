@@ -3,22 +3,24 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useCopyToClipboard } from "@uidotdev/usehooks";
 import { Button, Box } from '@chakra-ui/react';
 
-const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
-    const match = /language-(\w+)/.exec(className || '');
-    const codeString = String(children).replace(/\n$/, '');
+interface CodeBlockProps {
+    language: string;
+    codeString: string;
+}
+
+const CodeBlock = ({ language, codeString }: CodeBlockProps) => {
     const [copiedText, copyToClipboard] = useCopyToClipboard();
 
     const handleCopy = () => {
         copyToClipboard(codeString);
     };
 
-    return !inline && match ? (
+    return (
         <Box position="relative" my="4" borderRadius="md" overflow="hidden">
             <SyntaxHighlighter
                 style={vscDarkPlus}
-                language={match[1]}
+                language={language}
                 PreTag="div"
-                {...props}
             >
                 {codeString}
             </SyntaxHighlighter>
@@ -33,10 +35,6 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
               {copiedText === codeString ? 'Copied!' : 'Copy'}
             </Button>
         </Box>
-    ) : (
-        <code className={className} {...props}>
-            {children}
-        </code>
     );
 };
     

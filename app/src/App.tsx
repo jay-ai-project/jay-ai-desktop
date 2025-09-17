@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import CodeBlock from './CodeBlock';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
+import { marked } from 'marked';
+import Prose from './Prose';
 import { Box, Flex, VStack, Textarea, IconButton, Avatar } from '@chakra-ui/react';
 import { ArrowUpIcon } from '@chakra-ui/icons';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -151,15 +149,7 @@ function App() {
               borderRadius="lg"
               maxW="80%"
             >
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw]}
-                components={{
-                  code: CodeBlock,
-                }}
-              >
-                {msg.content}
-              </ReactMarkdown>
+              <Prose html={marked.parse(msg.content) as string} />
             </Box>
             {msg.type === 'human' && <Avatar size="sm" ml="3" />}
           </Flex>

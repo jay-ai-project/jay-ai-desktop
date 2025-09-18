@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Prose from './Prose';
 import { Box, Flex, VStack, Textarea, IconButton, Avatar, HStack, Tag, TagLabel, TagCloseButton } from '@chakra-ui/react';
-import { ArrowUpIcon } from '@chakra-ui/icons';
+import { ArrowUpIcon, SettingsIcon, AttachmentIcon, InfoIcon } from '@chakra-ui/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 import AIMessage from './AIMessage';
 
@@ -231,19 +231,55 @@ function App() {
           onDrop={handleDrop}
         >
           <Flex as="form" onSubmit={e => { e.preventDefault(); handleSend(); }} align="flex-end">
-            <Textarea
-              as={TextareaAutosize}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message or drop files here..."
-              variant="filled"
-              minRows={1}
-              maxRows={6}
-              mr="2"
+            <VStack
               flex="1"
-              resize="none"
-            />
+              mr="2"
+              borderWidth="1px"
+              borderColor="transparent"
+              borderRadius="md"
+              bg="gray.700"
+              _focusWithin={{
+                borderColor: 'blue.500',
+                boxShadow: '0 0 0 1px blue.500',
+              }}
+              align="stretch"
+              spacing={2}
+              p={2}
+            >
+              <Textarea
+                minH="1rem"
+                as={TextareaAutosize}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your message or drop files here..."
+                variant="unstyled"
+                minRows={1}
+                maxRows={6}
+                resize="none"
+                p={1}
+              />
+              <HStack spacing="2">
+                <IconButton
+                  aria-label="Settings"
+                  icon={<SettingsIcon />}
+                  size="sm"
+                  variant="ghost"
+                />
+                <IconButton
+                  aria-label="Attach file"
+                  icon={<AttachmentIcon />}
+                  size="sm"
+                  variant="ghost"
+                />
+                <IconButton
+                  aria-label="Tool"
+                  icon={<InfoIcon />} // Placeholder for tool icon
+                  size="sm"
+                  variant="ghost"
+                />
+              </HStack>
+            </VStack>
             <IconButton
               aria-label="Send message"
               icon={<ArrowUpIcon />}

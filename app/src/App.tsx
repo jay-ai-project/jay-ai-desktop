@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Prose from './Prose';
-import { Box, Flex, VStack, Textarea, IconButton, Avatar } from '@chakra-ui/react';
+import { Box, Flex, VStack, Textarea, IconButton, Avatar, HStack, Tag, TagLabel, TagCloseButton } from '@chakra-ui/react';
 import { ArrowUpIcon } from '@chakra-ui/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 import AIMessage from './AIMessage';
@@ -25,11 +25,14 @@ interface Message {
   type: 'human' | 'ai';
   content: string;
   metadata?: Metadata;
+  attachments?: File[];
 }
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -41,12 +44,18 @@ function App() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (input.trim() === '' || isLoading) return;
-    const userPrompt = input;
+    if ((input.trim() === '' && attachments.length === 0) || isLoading) return;
+    let userPrompt = input;
+    if (attachments.length > 0) {
+      const fileNames = attachments.map(file => file.name).join(', ');
+      userPrompt = `${userPrompt}\n\nAttached files: ${fileNames}`;
+    }
+
     setInput('');
+    setAttachments([]);
     setIsLoading(true);
 
-    const humanMessage: Message = { id: crypto.randomUUID(), type: 'human', content: userPrompt };
+    const humanMessage: Message = { id: crypto.randomUUID(), type: 'human', content: userPrompt, attachments };
     setMessages(prev => [...prev, humanMessage]);
 
     const aiMessage: Message = { id: crypto.randomUUID(), type: 'ai', content: '' };
@@ -136,6 +145,37 @@ function App() {
     }
   };
 
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setAttachments(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <Flex h="100vh" flexDirection="column" maxW="800px" mx="auto">
       <VStack
@@ -180,30 +220,51 @@ function App() {
         )}
       </VStack>
       <Box p="4">
-        <Flex as="form" onSubmit={e => { e.preventDefault(); handleSend(); }} align="flex-end">
-          <Textarea
-            as={TextareaAutosize}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-            variant="filled"
-            minRows={1}
-            maxRows={6}
-            mr="2"
-            flex="1"
-            resize="none"
-          />
-          <IconButton
-            aria-label="Send message"
-            icon={<ArrowUpIcon />}
-            type="submit"
-            isLoading={isLoading}
-            isDisabled={input.trim() === ''}
-            colorScheme="blue"
-            isRound
-          />
-        </Flex>
+        <Box
+          border="2px dashed"
+          borderColor={isDragging ? 'blue.500' : 'transparent'}
+          borderRadius="md"
+          p="2"
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          <Flex as="form" onSubmit={e => { e.preventDefault(); handleSend(); }} align="flex-end">
+            <Textarea
+              as={TextareaAutosize}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message or drop files here..."
+              variant="filled"
+              minRows={1}
+              maxRows={6}
+              mr="2"
+              flex="1"
+              resize="none"
+            />
+            <IconButton
+              aria-label="Send message"
+              icon={<ArrowUpIcon />}
+              type="submit"
+              isLoading={isLoading}
+              isDisabled={(input.trim() === '' && attachments.length === 0)}
+              colorScheme="blue"
+              isRound
+            />
+          </Flex>
+          {attachments.length > 0 && (
+            <HStack mt="2" spacing="2">
+              {attachments.map((file, index) => (
+                <Tag key={index} size="lg" colorScheme="blue" borderRadius="full">
+                  <TagLabel>{file.name}</TagLabel>
+                  <TagCloseButton onClick={() => removeAttachment(index)} />
+                </Tag>
+              ))}
+            </HStack>
+          )}
+        </Box>
       </Box>
     </Flex>
   );

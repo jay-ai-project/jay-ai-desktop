@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { marked } from 'marked';
 import Prose from './Prose';
 import { Box, Flex, VStack, Textarea, IconButton, Avatar } from '@chakra-ui/react';
 import { ArrowUpIcon } from '@chakra-ui/icons';
 import TextareaAutosize from 'react-textarea-autosize';
+import AIMessage from './AIMessage';
 
 // Define the structure for metadata
 interface Metadata {
@@ -138,22 +138,46 @@ function App() {
 
   return (
     <Flex h="100vh" flexDirection="column" maxW="800px" mx="auto">
-      <VStack flex="1" overflowY="auto" spacing="4" p="4" ref={chatContainerRef}>
-        {messages.map(msg => (
-          <Flex key={msg.id} w="full" justify={msg.type === 'human' ? 'flex-end' : 'flex-start'}>
-            {msg.type === 'ai' && <Avatar size="sm" mr="3" />}
-            <Box
-              bg={msg.type === 'human' ? 'blue.500' : 'gray.600'}
-              color="white"
-              p="3"
-              borderRadius="lg"
-              maxW="80%"
-            >
-              <Prose html={marked.parse(msg.content) as string} />
-            </Box>
-            {msg.type === 'human' && <Avatar size="sm" ml="3" />}
-          </Flex>
-        ))}
+      <VStack
+        flex="1"
+        overflowY="auto"
+        spacing="4"
+        p="4"
+        ref={chatContainerRef}
+        sx={{
+          '&::-webkit-scrollbar': {
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'gray.700',
+            borderRadius: '3px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: 'gray.600',
+          },
+        }}
+      >
+        {messages.map(msg =>
+          msg.type === 'ai' ? (
+            <AIMessage key={msg.id} message={msg} />
+          ) : (
+            <Flex key={msg.id} w="full" justify={'flex-end'}>
+              <Box
+                bg={'blue.500'}
+                color="white"
+                p="3"
+                borderRadius="lg"
+                maxW="80%"
+              >
+                <Prose markdown={msg.content} />
+              </Box>
+              <Avatar size="sm" ml="3" />
+            </Flex>
+          )
+        )}
       </VStack>
       <Box p="4">
         <Flex as="form" onSubmit={e => { e.preventDefault(); handleSend(); }} align="flex-end">

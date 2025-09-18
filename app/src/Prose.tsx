@@ -1,81 +1,82 @@
-import { Box, BoxProps } from '@chakra-ui/react';
-import parse, { domToReact, HTMLReactParserOptions, Element } from 'html-react-parser';
+import {
+  Box,
+  BoxProps,
+  Heading,
+  Text,
+  Link,
+  UnorderedList,
+  OrderedList,
+  ListItem,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Tfoot,
+  Divider,
+  Code,
+  Alert,
+} from '@chakra-ui/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import CodeBlock from './CodeBlock';
 
 interface ProseProps extends BoxProps {
-  html: string;
+  markdown: string;
 }
 
-const Prose = ({ html, ...rest }: ProseProps) => {
-  const options: HTMLReactParserOptions = {
-    replace: (domNode) => {
-      if (domNode instanceof Element && domNode.name === 'pre') {
-        const codeNode = domNode.children[0];
-        if (codeNode instanceof Element && codeNode.name === 'code') {
-          const langAttr = codeNode.attribs.class || '';
-          const language = /language-(\w+)/.exec(langAttr)?.[1] || '';
-          const codeString = domToReact(codeNode.children) as string;
-          
-          return <CodeBlock language={language} codeString={codeString.trim()} />;
-        }
-      }
+const Prose = ({ markdown, ...rest }: ProseProps) => {
+  const components = {
+    h1: ({ ...props }) => <Heading as="h1" size="xl" my="4" {...props} />,
+    h2: ({ ...props }) => <Heading as="h2" size="lg" my="4" {...props} />,
+    h3: ({ ...props }) => <Heading as="h3" size="md" my="3" {...props} />,
+    h4: ({ ...props }) => <Heading as="h4" size="sm" my="3" {...props} />,
+    h5: ({ ...props }) => <Heading as="h5" size="xs" my="2" {...props} />,
+    h6: ({ ...props }) => <Heading as="h6" size="xs" my="2" {...props} />,
+    p: ({ ...props }) => <Text my="4" {...props} />,
+    a: ({ ...props }) => <Link color="blue.400" isExternal {...props} />,
+    ul: ({ ...props }) => <UnorderedList pl="4" my="4" {...props} />,
+    ol: ({ ...props }) => <OrderedList pl="4" my="4" {...props} />,
+    li: ({ ...props }) => <ListItem {...props} />,
+    table: ({ ...props }) => <Table variant="striped" colorScheme="gray" my="4" {...props} />,
+    thead: ({ ...props }) => <Thead {...props} />,
+    tbody: ({ ...props }) => <Tbody {...props} />,
+    tfoot: ({ ...props }) => <Tfoot {...props} />,
+    tr: ({ ...props }) => <Tr {...props} />,
+    th: ({ ...props }) => <Th {...props} />,
+    td: ({ ...props }) => <Td {...props} />,
+    hr: ({ ...props }) => <Divider my="6" {...props} />,
+    blockquote: ({ ...props }) => (
+      <Alert
+        status="info"
+        variant="left-accent"
+        as="blockquote"
+        my="4"
+        {...props}
+      />
+    ),
+    code: ({ node, inline, className, children, ...props }: any) => {
+      const match = /language-(\w+)/.exec(className || '');
+      return !inline && match ? (
+        <CodeBlock
+          language={match[1]}
+          codeString={String(children).replace(/\n$/, '')}
+          {...props}
+        />
+      ) : (
+        <Code colorScheme="gray" {...props}>
+          {children}
+        </Code>
+      );
     },
   };
 
   return (
-    <Box
-      sx={{
-        // General styles
-        p: {
-          lineHeight: 'tall',
-          marginBottom: '4',
-        },
-        'h1, h2, h3, h4, h5, h6': {
-          fontWeight: 'bold',
-          marginBottom: '3',
-          marginTop: '6',
-        },
-        h1: { fontSize: '2xl' },
-        h2: { fontSize: 'xl' },
-        h3: { fontSize: 'lg' },
-        // Lists
-        'ul, ol': {
-          paddingLeft: '6',
-          marginBottom: '4',
-        },
-        li: {
-          marginBottom: '1',
-        },
-        // Links
-        a: {
-          color: 'blue.300',
-          textDecoration: 'underline',
-          _hover: {
-            color: 'blue.200',
-          },
-        },
-        // Blockquotes
-        blockquote: {
-          borderLeft: '4px',
-          borderColor: 'gray.500',
-          paddingLeft: '4',
-          marginY: '4',
-          fontStyle: 'italic',
-          color: 'gray.400',
-        },
-        // Inline code
-        code: {
-          fontFamily: 'mono',
-          background: 'gray.700',
-          borderRadius: 'sm',
-          paddingX: '1.5',
-          paddingY: '1',
-          fontSize: 'sm',
-        },
-      }}
-      {...rest}
-    >
-      {parse(html, options)}
+    <Box {...rest}>
+      <ReactMarkdown components={components} remarkPlugins={[remarkGfm]}>
+        {markdown}
+      </ReactMarkdown>
     </Box>
   );
 };

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 
-from src.agent import agent
+from src.agent import get_agent
 from src.schemas import ChatRequest
 
 
@@ -28,7 +28,7 @@ async def chat_stream(request: ChatRequest):
         try:
             # The input to the graph is a list of messages
             input_content = [{"text": request.prompt}]
-            stream: AsyncIterator[dict] = agent.stream_async(prompt=[{"role": "user", "content": input_content}])
+            stream: AsyncIterator[dict] = get_agent().stream_async(prompt=[{"role": "user", "content": input_content}])
 
             async for event in stream:
                 if event.get("data"):
